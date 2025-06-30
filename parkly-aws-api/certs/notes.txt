@@ -1,0 +1,13 @@
+// scp ubuntu@3.107.79.165:/home/ubuntu/certs/client.key ./certs/
+// scp ubuntu@3.107.79.165:/home/ubuntu/certs/client.crt ./certs/
+// scp ubuntu@3.107.79.165:/home/ubuntu/certs/ca.crt ./certs/
+// scp -i parkly-mysql-keypair.pem ubuntu@3.107.79.165:/home/ubuntu/certs/client.key ./certs/
+// scp -i /Users/racshanyaa/Documents/GitHub/Parkly/parkly-aws-api/parkly-mysql-keypair.pem ubuntu@3.107.79.165:/etc/mosquitto/certs/client.key ./certs/
+// scp -i /Users/racshanyaa/Documents/GitHub/Parkly/parkly-aws-api/parkly-mysql-keypair.pemubuntu@3.107.79.165:/home/ubuntu/client.key ./certs/
+// scp -i /Users/racshanyaa/Documents/GitHub/Parkly/parkly-aws-api/parkly-mysql-keypair.pem ubuntu@3.107.79.165:/home/ubuntu/client.key ./certs/
+// scp -i /Users/racshanyaa/Documents/GitHub/Parkly/parkly-aws-api/parkly-mysql-keypair.pem ubuntu@3.107.79.165:/home/ubuntu/client.crt ./certs/
+// scp -i /Users/racshanyaa/Documents/GitHub/Parkly/parkly-aws-api/parkly-mysql-keypair.pem ubuntu@3.107.79.165:/home/ubuntu/ca.crt ./certs/
+// sudo cp /etc/mosquitto/certs/client.key /home/ubuntu/
+// sudo chown ubuntu:ubuntu /home/ubuntu/client.crt
+// sudo cp /etc/mosquitto/certs/ca.crt /home/ubuntu/
+// sudo chown ubuntu:ubuntu /home/ubuntu/ca.crt

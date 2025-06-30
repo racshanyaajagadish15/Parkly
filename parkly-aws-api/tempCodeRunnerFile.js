@@ -1,0 +1,1 @@
+ssh -i parkly-mysql-keypair.pem -L 8883:localhost:8883 ubuntu@3.107.79.165
