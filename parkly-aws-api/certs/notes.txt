@@ -11,3 +11,5 @@
 // sudo chown ubuntu:ubuntu /home/ubuntu/client.crt
 // sudo cp /etc/mosquitto/certs/ca.crt /home/ubuntu/
 // sudo chown ubuntu:ubuntu /home/ubuntu/ca.crt
+
+

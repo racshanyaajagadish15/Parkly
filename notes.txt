@@ -1,0 +1,41 @@
+EVERYDAY STARTUP ROUTINE
+
+Step 1: Go and turn on AWS EC2 Instance and get Public IP
+Step 2: Edit these commands for the day:
+
+ssh -i parkly-mysql-keypair.pem -L 3307:localhost:3306 ubuntu@3.107.57.27
+ssh -i parkly-mysql-keypair.pem -L 8883:localhost:8883 ubuntu@3.107.57.27
+
+
+with the valid IP for the day
+
+Step 3: Launch remote connection from Terminal using above commands. 2 Terminal Windows - EC2 MYSQL and EC2 MQTT
+Step 4: Check SQL server status by running: sudo systemctl status mysql
+Step 5: If required, start SQL server by running: sudo systemctl start mysql. 
+
+MySQL Credentials
+mysql -u root -p Racshanyaa@2006
+mysql -u parkly_user -p Parkly@2025!
+
+
+CAMERA CRASH RESET STEPS 
+
+Error Indication:
+Server is running on port 3000
+Connected to MySQL on EC2 successfully!
+[DEBUG] Node.js is passing lot_id = A2
+[ERROR] Python script failed: Command failed: python3 detect_and_publish.py A2
+OpenCV: out device of bound (0-0): 1
+OpenCV: camera failed to properly initialize!
+[ERROR] Camera failed to capture
+
+Error on API Methods: /detect_parking_lot_mqtt/:lot_id, /detect_parking_lot/:lot_id'
+
+Step 1: Run this command to check if camera is still being used by any resources
+
+ lsof | grep /dev/video
+
+If something is continuously using camwra even when the code not executing, then something stuck without proper release at camera
+
+Step 2: Execute cap.release on python file seperately
+

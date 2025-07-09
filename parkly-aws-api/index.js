@@ -1,43 +1,8 @@
-// Run this command to connect to EC2 Instance 
-// ssh -i parkly-mysql-keypair.pem ubuntu@3.107.79.165
-// OpenSSL challenge password: rac@2006
-// ssh -i parkly-mysql-keypair.pem -L 8883:localhost:8883 ubuntu@3.107.79.165
-
-
-
-
-
-
-
-
-
-
-
-
-// mySQL connection to server
-/* const mysql = require("mysql2");
-const connection = mysql.createConnection({
-  host: "127.0.0.1",     // tunnel address
-  port: 3307,            // local forwarded port
-  user: "parklyuser",
-  password: "Racshanyaa@2006",
-  database: "parkly"
-});
-
-
-connection.connect(err => {
-  if (err) throw err;
-  console.log("Connected to EC2 MySQL!");
-});
-module.exports = connection;
- */
-
-
 const mqtt = require('mqtt');
 const fs = require('fs');
 const path = require('path');
 
-const certPath = './certs';
+const certPath = '/Users/racshanyaa/Documents/GitHub/Parkly/parkly-aws-api/certs';
 
 try {
   const key = fs.readFileSync(path.join(certPath, 'client.key'));
