@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Parking Map Navigation</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #1a1a1a;
+      font-family: Arial, sans-serif;
+    }
+    .label {
+      color: white;
+      font-size: 14px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 4px 8px;
+      border-radius: 4px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .loading {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 18px;
+      z-index: 999;
+    }
+    .buttons {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 999;
+    }
+    .buttons button {
+      margin-right: 10px;
+      padding: 8px 16px;
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="loading">Loading parking map...</div>
+  <div class="buttons">
+    <button onclick="loadAllParkingLots({ x: 4, y: 7 })">Start at 4,7</button>
+    <button onclick="loadAllParkingLots({ x: -2, y: 3 })">Start at -2,3</button>
+    <button onclick="loadAllParkingLots({ x: 1, y: -5 })">Start at 1,-5</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/renderers/CSS2DRenderer.js"></script>
+
+  <script>
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const labelRenderer = new THREE.CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.position = 'absolute';
+    labelRenderer.domElement.style.top = '0';
+    labelRenderer.domElement.style.pointerEvents = 'none';
+    document.body.appendChild(labelRenderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    scene.add(dirLight);
+
+    const gridSize = 10;
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(gridSize, gridSize),
+      new THREE.MeshStandardMaterial({ color: 0x222222 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    scene.add(new THREE.GridHelper(gridSize, gridSize, 0x444444, 0x333333));
+
+    const userDot = new THREE.Mesh(
+      new THREE.SphereGeometry(0.15, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0x2196f3 })
+    );
+    userDot.position.set(0, 0.25, 0);
+    scene.add(userDot);
+
+    let destCube, pathLine, marker, startDot, startLabel;
+    let lotCubes = [];
+
+    function loadAllParkingLots(startCoord) {
+      document.querySelector('.loading').textContent = 'Loading parking lots...';
+
+      fetch('http://localhost:3000/parking_lots')
+        .then(res => res.json())
+        .then(lots => {
+          lotCubes.forEach(cube => scene.remove(cube));
+          lotCubes = [];
+
+          let reservedLot = null;
+
+          lots.forEach(lot => {
+            const { lot_id, status, coord_x, coord_y } = lot;
+            let color = 0x9e9e9e;
+            if (status === 'reserved') {
+              color = 0xffeb3b;
+              reservedLot = { x: coord_x, y: coord_y };
+            } else if (status === 'occupied') {
+              color = 0xf44336;
+            } else if (status === 'selected') {
+              color = 0x00bcd4;
+            }
+
+            const cube = new THREE.Mesh(
+              new THREE.BoxGeometry(0.8, 0.2, 0.8),
+              new THREE.MeshStandardMaterial({ color })
+            );
+            cube.position.set(coord_x, 0.1, coord_y);
+
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'label';
+            labelDiv.textContent = lot_id;
+            const label = new THREE.CSS2DObject(labelDiv);
+            label.position.set(0, 0.3, 0);
+            cube.add(label);
+
+            scene.add(cube);
+            lotCubes.push(cube);
+          });
+
+          if (reservedLot) {
+            loadMap(startCoord, reservedLot);
+          } else {
+            document.querySelector('.loading').textContent = 'No reserved lot found.';
+          }
+        })
+        .catch(err => {
+          console.error('[ERROR] Fetching parking lots failed', err);
+        });
+    }
+
+    function loadMap(start, destination) {
+        const lot_id = `(${destination.x},${destination.y})`;
+        document.querySelector('.loading').textContent = `Navigating to ${lot_id}`;
+
+        if (destCube) scene.remove(destCube);
+        if (pathLine) scene.remove(pathLine);
+        if (marker) scene.remove(marker);
+        if (startDot) scene.remove(startDot);
+
+        // Create a Set of obstacle coordinates
+        const obstacleSet = new Set(lotCubes.map(c => `${c.position.x},${c.position.z}`));
+        obstacleSet.delete(`${destination.x},${destination.y}`); // Don't block the goal
+
+        // BFS Pathfinding
+        function bfs(start, goal) {
+            const queue = [[start]];
+            const visited = new Set([`${start.x},${start.y}`]);
+            const directions = [
+            [1, 0], [-1, 0], [0, 1], [0, -1]
+            ];
+
+            while (queue.length > 0) {
+            const path = queue.shift();
+            const { x, y } = path[path.length - 1];
+
+            if (x === goal.x && y === goal.y) return path;
+
+            for (const [dx, dy] of directions) {
+                const nx = x + dx, ny = y + dy;
+                const key = `${nx},${ny}`;
+                if (!visited.has(key) && !obstacleSet.has(key)) {
+                visited.add(key);
+                queue.push([...path, { x: nx, y: ny }]);
+                }
+            }
+            }
+            return []; // No path found
+        }
+
+        const pathCoords = bfs({ x: start.x, y: start.y }, { x: destination.x, y: destination.y });
+        if (pathCoords.length === 0) {
+            document.querySelector('.loading').textContent = 'No available path to destination.';
+            return;
+        }
+
+        // Create pathPoints
+        const height = 0.21;
+        const pathPoints = pathCoords.map(p => new THREE.Vector3(p.x, height, p.y));
+
+        // Start dot
+        startDot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.2, 32, 32),
+            new THREE.MeshStandardMaterial({ color: 0x4caf50, emissive: 0x4caf50, emissiveIntensity: 0.5 })
+        );
+        startDot.position.set(start.x, 0.1, start.y);
+        scene.add(startDot);
+
+        const startLabel = new THREE.CSS2DObject(document.createElement('div'));
+        startLabel.element.className = 'label';
+        startLabel.element.textContent = 'Start';
+        startLabel.position.set(0, 0.3, 0);
+        startDot.add(startLabel);
+
+        // Destination cube
+        destCube = new THREE.Mesh(
+            new THREE.BoxGeometry(0.8, 0.2, 0.8),
+            new THREE.MeshStandardMaterial({ color: 0x00bcd4 })
+        );
+        destCube.position.set(destination.x, 0.1, destination.y);
+
+        const label = new THREE.CSS2DObject(document.createElement('div'));
+        label.element.className = 'label';
+        label.element.textContent = `Lot ${lot_id}`;
+        label.position.set(0, 0.3, 0);
+        destCube.add(label);
+        scene.add(destCube);
+
+        // Draw path line
+        pathLine = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(pathPoints),
+            new THREE.LineBasicMaterial({ color: 0x00e5ff })
+        );
+        scene.add(pathLine);
+
+        // Add turn marker
+        if (pathPoints.length > 2) {
+            const turnPoint = pathPoints[1]; // 1st turn
+            marker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 16, 16),
+            new THREE.MeshStandardMaterial({ color: 0xffc107 })
+            );
+            marker.position.copy(turnPoint);
+            scene.add(marker);
+        }
+
+        // Animate
+        userDot.position.set(start.x, 0.25, start.y);
+        animateUserDot(userDot, pathPoints);
+        }
+
+
+    function animateUserDot(dot, pathPoints) {
+      const duration = 5000;
+      const start = Date.now();
+
+      function step() {
+        const elapsed = Date.now() - start;
+        const t = Math.min(elapsed / duration, 1);
+        const idx = Math.floor(t * (pathPoints.length - 1));
+        if (idx < pathPoints.length - 1) {
+          const next = idx + 1;
+          const localT = (t * (pathPoints.length - 1)) % 1;
+          dot.position.lerpVectors(pathPoints[idx], pathPoints[next], localT);
+          requestAnimationFrame(step);
+        } else {
+          dot.position.copy(pathPoints[pathPoints.length - 1]);
+        }
+      }
+      step();
+    }
+
+    camera.position.set(5, 12, 12);
+    camera.lookAt(5, 0, 5);
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Default startup
+    loadAllParkingLots({ x: 4, y: 7 });
+  </script>
+</body>
+</html>

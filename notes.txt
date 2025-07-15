@@ -39,3 +39,20 @@ If something is continuously using camwra even when the code not executing, then
 
 Step 2: Execute cap.release on python file seperately
 
+
+TO AVOID
+
+Error [ERR_HTTP_HEADERS_SENT]: Cannot set headers after they are sent to the client
+    at ServerResponse.setHeader (node:_http_outgoing:642:11)
+    at ServerResponse.header (/Users/racshanyaa/Documents/GitHub/Parkly/node_modules/express/lib/response.js:684:10)
+    at ServerResponse.send (/Users/racshanyaa/Documents/GitHub/Parkly/node_modules/express/lib/response.js:161:12)
+    at ServerResponse.json (/Users/racshanyaa/Documents/GitHub/Parkly/node_modules/express/lib/response.js:250:15)
+    at Query.onResult (/Users/racshanyaa/Documents/GitHub/Parkly/parkly-mysql-api/index.js:131:20)
+    at /Users/racshanyaa/Documents/GitHub/Parkly/parkly-mysql-api/node_modules/mysql2/lib/commands/query.js:91:16
+    at process.processTicksAndRejections (node:internal/process/task_queues:85:11) {
+  code: 'ERR_HTTP_HEADERS_SENT'
+}
+
+
+Package all the DB queries into first DB query block if got multiple in the same API request.
+
